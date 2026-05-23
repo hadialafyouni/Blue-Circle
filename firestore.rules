@@ -1,0 +1,168 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Helper function to check if user is a parent
+    function isParent() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+    }
+
+    // Helper function to check if user is a child
+    function isChild() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/children/$(request.auth.uid));
+    }
+
+    // Helper function to get parent ID of a child
+    function getParentId(childId) {
+      return get(/databases/$(database)/documents/children/$(childId)).data.parentId;
+    }
+
+    function isParentOfChild(childId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/children/$(childId))
+        && getParentId(childId) == request.auth.uid;
+    }
+
+    function isChildOfParent(parentId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/children/$(request.auth.uid))
+        && getParentId(request.auth.uid) == parentId;
+    }
+
+    function canWriteChildLiveLocation(childId) {
+      return request.auth.uid == childId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'liveLocation',
+          'liveLocationUpdatedAt',
+          'liveLocationAccuracy',
+          'liveLocationAltitude',
+          'liveLocationHeading',
+          'liveLocationSpeed',
+          'liveLocationIsMocked',
+          'liveLocationStatus',
+          'liveLocationStatusUpdatedAt',
+          'safeZoneState',
+        ]);
+    }
+
+    function canCreateNotificationFor(recipientId) {
+      return isOwner(recipientId) || isChildOfParent(recipientId);
+    }
+
+    // Module 1: Users
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+
+      match /safe_zones/{safeZoneId} {
+        allow read: if isOwner(userId) || isChildOfParent(userId);
+        allow write: if isOwner(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isOwner(userId);
+        allow create: if isAuthenticated()
+          && request.resource.data.recipientId == userId;
+      }
+    }
+
+    // Module 2: Children Profiles
+    // Parents can only access their own children
+    // Children can only access their own profile
+    match /children/{childId} {
+      // Read: Allow if parent owns the child OR child is accessing their own profile
+      allow read: if isAuthenticated() && (
+        resource.data.parentId == request.auth.uid ||
+        request.auth.uid == childId
+      );
+      
+      // Create: Only parents can create children
+      allow create: if isAuthenticated() && isParent() && request.resource.data.parentId == request.auth.uid;
+      
+      // Update: Parent can manage profile. Child can only update live location state.
+      allow update: if isAuthenticated() && (
+        resource.data.parentId == request.auth.uid ||
+        canWriteChildLiveLocation(childId)
+      );
+      
+      // Delete: Only parent who owns the child can delete
+      allow delete: if isAuthenticated() && resource.data.parentId == request.auth.uid;
+
+      match /safe_zone_events/{eventId} {
+        allow read: if isAuthenticated()
+          && (isParentOfChild(childId) || request.auth.uid == childId);
+        allow create: if isAuthenticated() && request.auth.uid == childId;
+        allow update, delete: if false;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isAuthenticated()
+        && resource.data.recipientId == request.auth.uid;
+      allow create: if isAuthenticated();
+    }
+
+    // Module 3: Posts
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    }
+
+    // Module 4: Reviews & Likes
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    match /likes/{likeId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.resource.data.userId == request.auth.uid);
+    }
+
+    // Module 5: Places
+    match /places/{placeId} {
+      allow read: if true;
+      allow write: if false; // Only manageable via Admin SDK or Cloud Functions if automated
+    }
+
+    // Module 5.5: Categories
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Module 6: Community Groups
+    match /groups/{groupId} {
+      allow read: if true;
+      allow write: if isAuthenticated(); // For now, allowing creation
+    }
+    
+    match /groupMembers/{memberId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid in memberId.split('_'));
+    }
+    
+    match /groupPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Module 7: Saved Places
+    match /savedPlaces/{savedId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}
