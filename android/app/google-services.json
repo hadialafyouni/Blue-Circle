@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "935192493994",
+    "project_id": "blue-circle-3166e",
+    "storage_bucket": "blue-circle-3166e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:935192493994:android:0a32d3e10ecc22200e35d3",
+        "android_client_info": {
+          "package_name": "com.example.autismcare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "935192493994-4unaed9m0etvpau6jg3hsahvb2770qnd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.autismcare",
+            "certificate_hash": "a220683586ec6119be9fbe0b99a50ca9a352bfbf"
+          }
+        },
+        {
+          "client_id": "935192493994-l9pbkvdar7ubfj0lhkpoduscem4fvdpa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.autismcare",
+            "certificate_hash": "dad1a2521ea154352758068f31f234c54ec12191"
+          }
+        },
+        {
+          "client_id": "935192493994-3esa8jd2i8f3gsf67lr5ui6qba3psso6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuwJIgesCLNzp4FDNdN-kS1vxR6gbGkvA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "935192493994-3esa8jd2i8f3gsf67lr5ui6qba3psso6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "935192493994-slcs72fnu1kh4g3amg3dk5gb60as9o5j.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.autismcare"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
